@@ -1,0 +1,85 @@
+# Dépendances
+node_modules/
+package-lock.json
+npm-debug.log
+yarn.lock
+
+# Documentation
+*.md
+!README.md
+
+# Build
+dist/
+build/
+*.o
+*.class
+target/
+.gradle/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.classpath
+.c9/
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+mysql-data/
+postgres-data/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporaire
+*.tmp
+*.temp
+.tmp/
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Maven
+*.jar
+!**/target/*.jar
+
+# Spring Boot
+.m2/
+.maven/
+
+# IDE settings
+.vscode/settings.json
+.idea/workspace.xml
+
+# Node
+dist/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.eslintcache

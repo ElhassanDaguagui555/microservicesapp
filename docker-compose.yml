@@ -1,0 +1,175 @@
+version: "3.9"
+
+services:
+  mysql-book:
+    image: mysql:8.0
+    container_name: mysql-book
+    environment:
+      - MYSQL_DATABASE=db_book
+      - MYSQL_USER=book
+      - MYSQL_PASSWORD=book
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_book_data:/var/lib/mysql
+    networks:
+      - micro-net
+
+  mysql-user:
+    image: mysql:8.0
+    container_name: mysql-user
+    environment:
+      - MYSQL_DATABASE=db_user
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=user
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_user_data:/var/lib/mysql
+    networks:
+      - micro-net
+
+  mysql-emprunt:
+    image: mysql:8.0
+    container_name: mysql-emprunt
+    environment:
+      - MYSQL_DATABASE=db_emprunter
+      - MYSQL_USER=emprunt
+      - MYSQL_PASSWORD=emprunt
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_emprunt_data:/var/lib/mysql
+    networks:
+      - micro-net
+
+  eurika:
+    build: ./eurika
+    container_name: eurika
+    ports:
+      - "8761:8761"
+    environment:
+      - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
+      - EUREKA_CLIENT_FETCH_REGISTRY=false
+    networks:
+      - micro-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - micro-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+    networks:
+      - micro-net
+
+  book-service:
+    build: ./book
+    container_name: book-service
+    ports:
+      - "8081:8081"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eurika:8761/eureka/
+      - DB_URL=jdbc:mysql://mysql-book:3306/db_book?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - DB_USER=book
+      - DB_PASS=book
+    depends_on:
+      - eurika
+      - mysql-book
+    networks:
+      - micro-net
+
+  user-service:
+    build: ./user
+    container_name: user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eurika:8761/eureka/
+      - DB_URL=jdbc:mysql://mysql-user:3306/db_user?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - DB_USER=user
+      - DB_PASS=user
+    depends_on:
+      - eurika
+      - mysql-user
+    networks:
+      - micro-net
+
+  emprunt-service:
+    build: ./emprunter
+    container_name: emprunt-service
+    ports:
+      - "8085:8085"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eurika:8761/eureka/
+      - DB_URL=jdbc:mysql://mysql-emprunt:3306/db_emprunter?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - DB_USER=emprunt
+      - DB_PASS=emprunt
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - eurika
+      - mysql-emprunt
+      - kafka
+    networks:
+      - micro-net
+
+  notification-service:
+    build: ./notification
+    container_name: notification-service
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eurika:8761/eureka/
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - APP_KAFKA_TOPIC_EMPRUNT_CREATED=emprunt-created
+    depends_on:
+      - eurika
+      - kafka
+    networks:
+      - micro-net
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "9999:9999"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eurika:8761/eureka/
+    depends_on:
+      - eurika
+      - book-service
+      - user-service
+      - emprunt-service
+    networks:
+      - micro-net
+
+volumes:
+  mysql_book_data:
+  mysql_user_data:
+  mysql_emprunt_data:
+
+networks:
+  micro-net:
+    driver: bridge
